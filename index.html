@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#2F6F65" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Судоку" />
+  <title>Судоку — Уютная головоломка</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="title-group">
+        <h1>Судоку</h1>
+        <span id="level-badge" class="level-badge">Уровень 1 • Новичок</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-awards" class="icon-btn" aria-label="Мои награды" title="Мои награды">
+          🏆 <span id="awards-count">0</span>
+        </button>
+        <button id="btn-new-game" class="primary-small-btn">Новая игра</button>
+      </div>
+    </header>
+
+    <!-- Status Strip -->
+    <section class="status-strip" aria-label="Статистика текущей игры">
+      <div class="stat-pill">
+        <span class="stat-label">Открыто:</span>
+        <span id="stat-clues" class="stat-value">46 / 81</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-label">Коррекции:</span>
+        <span id="stat-corrections" class="stat-value">0</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-label">Время:</span>
+        <span id="stat-timer" class="stat-value">00:00</span>
+      </div>
+    </section>
+
+    <!-- 9x9 Sudoku Board -->
+    <main class="board-wrapper">
+      <div id="sudoku-board" class="sudoku-board" role="grid" aria-label="Игровое поле Судоку 9 на 9"></div>
+    </main>
+
+    <!-- Helper Controls -->
+    <section class="tools-row">
+      <button id="btn-erase" class="tool-btn">
+        <span class="tool-icon">⌫</span>
+        <span>Стереть</span>
+      </button>
+      <button id="btn-notes" class="tool-btn" aria-pressed="false">
+        <span class="tool-icon">✎</span>
+        <span>Заметки <small id="notes-state">ВЫКЛ</small></span>
+      </button>
+      <button id="btn-hint" class="tool-btn">
+        <span class="tool-icon">💡</span>
+        <span>Подсказка</span>
+      </button>
+    </section>
+
+    <!-- Number Pad 1-9 -->
+    <section class="numpad" aria-label="Цифровая клавиатура">
+      <button class="num-btn" data-num="1">1<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="2">2<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="3">3<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="4">4<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="5">5<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="6">6<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="7">7<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="8">8<span class="rem-count"></span></button>
+      <button class="num-btn" data-num="9">9<span class="rem-count"></span></button>
+    </section>
+  </div>
+
+  <!-- New Game / 9 Levels Modal -->
+  <div id="modal-levels" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="levels-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="levels-title">Выберите сложность</h2>
+        <button id="close-levels" class="close-btn" aria-label="Закрыть">✕</button>
+      </div>
+      <p class="modal-subtitle">Чем выше уровень, тем меньше стартовых цифр на поле 9×9</p>
+      <div id="levels-grid" class="levels-grid"></div>
+    </div>
+  </div>
+
+  <!-- Victory & Reward Modal -->
+  <div id="modal-victory" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="victory-title">
+    <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+    <div class="modal-card victory-card">
+      <div id="victory-medal" class="victory-medal">🥇</div>
+      <h2 id="victory-title">Прекрасная победа!</h2>
+      <p id="victory-rank" class="victory-rank">Золотой орден безупречности</p>
+      <p id="victory-desc" class="victory-desc">Ни одной коррекции за всю партию!</p>
+      
+      <div class="victory-stats">
+        <div class="v-stat">
+          <span>Сложность</span>
+          <strong id="v-level">Уровень 1</strong>
+        </div>
+        <div class="v-stat">
+          <span>Коррекций</span>
+          <strong id="v-corrections">0</strong>
+        </div>
+        <div class="v-stat">
+          <span>Время</span>
+          <strong id="v-time">02:15</strong>
+        </div>
+      </div>
+
+      <button id="btn-play-again" class="primary-full-btn">Сыграть ещё раз</button>
+    </div>
+  </div>
+
+  <!-- Trophy Cabinet Modal -->
+  <div id="modal-awards" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="awards-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="awards-title">Шкатулка наград</h2>
+        <button id="close-awards" class="close-btn" aria-label="Закрыть">✕</button>
+      </div>
+      <p class="modal-subtitle">Награды выдаются за чистое решение с минимумом коррекций</p>
+      <div id="awards-summary" class="awards-summary"></div>
+      <div id="awards-history" class="awards-history"></div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
