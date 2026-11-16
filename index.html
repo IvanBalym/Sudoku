@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Судоку</title>
+  <meta name="description" content="Спокойная судоку: 9 уровней, награды, работает без интернета.">
+  <meta name="theme-color" content="#f6f1e7">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Судоку">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <style>
+:root {
+  --bg: #f6f1e7;
+  --bg2: #efe7d8;
+  --card: #fffdf8;
+  --ink: #2b3a55;
+  --ink-soft: #5e6b82;
+  --muted: #8a93a3;
+  --accent: #3d6fc4;
+  --accent-soft: #e3ecfa;
+  --gold: #f2b53a;
+  --line: #c9cfdb;
+  --line-strong: #3c5a86;
+  --sel: #ffe39a;
+  --peer: #f3ecde;
+  --same: #ffefc2;
+  --err: #d24c4c;
+  --err-bg: #fde6e3;
+  --hint: #2f8f6a;
+  --user: #2f62c2;
+  --radius: 18px;
+  --shadow: 0 10px 30px rgba(43, 58, 85, .12), 0 2px 6px rgba(43, 58, 85, .06);
+  --ease: cubic-bezier(.22, .9, .32, 1);
+  --cell: 40px;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); overscroll-behavior: none; }
+body {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #fffaf0 0%, transparent 60%),
+    radial-gradient(800px 500px at 100% 110%, #ece3d2 0%, transparent 60%),
+    var(--bg);
+}
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+[hidden] { display: none !important; }
+
+#app { height: 100dvh; position: relative; overflow: hidden; }
+
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  animation: screenIn .45s var(--ease) both;
+}
+@keyframes screenIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Кнопки ---------- */
+.btn {
+  border: 0; border-radius: 16px; padding: 14px 18px;
+  background: var(--card); box-shadow: var(--shadow);
+  font-size: 20px; font-weight: 600;
+  transition: transform .18s var(--ease), box-shadow .18s, background .2s;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.btn:active { transform: scale(.97); }
+.btn small { font-size: 14px; font-weight: 500; color: var(--ink-soft); }
+.btn-big { min-height: 70px; font-size: 23px; }
+.btn-primary { background: linear-gradient(180deg, #4e82d6, #3563b4); color: #fff; }
+.btn-primary small { color: #dce7fb; }
+.btn-soft { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+.btn-danger { background: #fff0ee; color: var(--err); box-shadow: none; margin-top: 20px; }
+.btn:focus-visible, .icon-btn:focus-visible, .tool:focus-visible, .key:focus-visible, .cell:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+.icon-btn {
+  width: 52px; height: 52px; border-radius: 16px; border: 0; background: var(--card);
+  box-shadow: var(--shadow); display: grid; place-items: center; flex: none;
+}
+.icon-btn svg, .tool svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Главное меню ---------- */
+.home-inner {
+  margin: auto; width: min(420px, 92vw); display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0 24px;
+}
+.logo { border: 0; background: none; padding: 0; width: min(260px, 64vw); aspect-ratio: 472/400; }
+.logo-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+#logoNine { transform-box: fill-box; transform-origin: 50% 100%; animation: nineDrop 1.5s .35s var(--ease) both; }
+#logoShadow { transform-box: fill-box; transform-origin: center; animation: shadowGrow 1.5s .35s var(--ease) both; }
+#logoRipple { transform-box: fill-box; transform-origin: center; opacity: 0; animation: ripple 1.6s 1.05s ease-out both; }
+.logo.replay #logoNine, .logo.replay #logoShadow, .logo.replay #logoRipple { animation-name: none; }
+@keyframes nineDrop {
+  0% { transform: translateY(-260px) scale(.9, 1.08); opacity: 0; }
+  20% { opacity: 1; }
+  48% { transform: translateY(0) scale(1, 1); }
+  56% { transform: translateY(0) scale(1.14, .84); }
+  68% { transform: translateY(-22px) scale(.97, 1.04); }
+  80% { transform: translateY(0) scale(1.05, .95); }
+  90% { transform: translateY(-5px) scale(1, 1); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes shadowGrow { 0% { transform: scale(.2); opacity: 0; } 48% { transform: scale(1.1); opacity: .32; } 68% { transform: scale(.8); } 100% { transform: scale(1); opacity: .28; } }
+@keyframes ripple { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(3.2); opacity: 0; } }
+
+.title { font-size: 46px; margin: 6px 0 0; letter-spacing: .5px; animation: fadeUp .7s .9s var(--ease) both; }
+.subtitle { margin: 4px 0 22px; color: var(--ink-soft); font-size: 18px; animation: fadeUp .7s 1s var(--ease) both; }
+.menu { width: 100%; display: grid; gap: 14px; }
+.menu > * { animation: fadeUp .6s var(--ease) both; }
+.menu > *:nth-child(1) { animation-delay: 1.05s; }
+.menu > *:nth-child(2) { animation-delay: 1.12s; }
+.menu > *:nth-child(3) { animation-delay: 1.19s; }
+.menu > *:nth-child(4) { animation-delay: 1.26s; }
+.menu > *:nth-child(5) { animation-delay: 1.33s; }
+.menu-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.menu-row .btn { font-size: 18px; min-height: 58px; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Верхняя панель ---------- */
+.topbar { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.topbar h2 { flex: 1; text-align: center; margin: 0; font-size: 24px; }
+.topbar .spacer { width: 52px; flex: none; }
+.scroll { overflow-y: auto; padding: 4px 16px 32px; flex: 1; width: 100%; max-width: 640px; margin: 0 auto; }
+
+/* ---------- Уровни ---------- */
+.level-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  padding: 8px 16px; width: min(560px, 100%); margin: 0 auto;
+}
+.level {
+  border: 0; border-radius: 18px; background: var(--card); box-shadow: var(--shadow);
+  padding: 12px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  animation: popIn .5s var(--ease) both; transition: transform .18s var(--ease);
+  position: relative;
+}
+.level:active { transform: scale(.96); }
+.level .num { font-size: 34px; font-weight: 800; line-height: 1.1; color: var(--accent); }
+.level .nm { font-size: 15px; font-weight: 600; text-align: center; }
+.level .gv { font-size: 13px; color: var(--muted); }
+.level .best { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; }
+.level .dots { display: flex; gap: 3px; margin-top: 4px; }
+.level .dots i { width: 7px; height: 7px; border-radius: 50%; background: #e2dccf; }
+.level .dots i.on { background: var(--gold); }
+@keyframes popIn { from { opacity: 0; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: none; } }
+.hint-text { text-align: center; color: var(--ink-soft); padding: 10px 24px; font-size: 16px; }
+
+/* ---------- Игра ---------- */
+.game-top { padding-bottom: 4px; }
+.game-title { flex: 1; text-align: center; }
+.game-title .lvl { font-size: 20px; font-weight: 700; }
+.game-title .meta { display: flex; justify-content: center; gap: 16px; margin-top: 2px; font-size: 18px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.corr { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.corr-medal { width: 26px; height: 26px; display: inline-block; transition: transform .4s var(--ease); }
+.corr-medal.bump { animation: bump .6s var(--ease); }
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.35) rotate(-8deg); } 100% { transform: scale(1); } }
+.timer.off { display: none; }
+
+.play { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 0 10px 10px; gap: 10px; }
+.board-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.board {
+  --b: 2.5px;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  width: calc(var(--cell) * 9 + var(--b) * 4); height: calc(var(--cell) * 9 + var(--b) * 4);
+  background: var(--line-strong); padding: var(--b); gap: var(--b);
+  border-radius: 14px; box-shadow: var(--shadow), 0 0 0 6px rgba(255,255,255,.6);
+  position: relative; user-select: none; -webkit-user-select: none;
+}
+.board.appear { animation: boardIn .6s var(--ease) both; }
+@keyframes boardIn { from { opacity: 0; transform: scale(.94) rotateX(18deg); } to { opacity: 1; transform: none; } }
+
+.box { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 1px; background: var(--line); overflow: hidden; }
+.box.b0 { border-top-left-radius: 11px; } .box.b2 { border-top-right-radius: 11px; }
+.box.b6 { border-bottom-left-radius: 11px; } .box.b8 { border-bottom-right-radius: 11px; }
+.cell {
+  border: 0; margin: 0; padding: 0; position: relative; min-width: 0; min-height: 0;
+  background: var(--card);
+  display: grid; place-items: center;
+  font-size: calc(var(--cell) * .62); font-weight: 600; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: background-color .25s ease;
+  touch-action: manipulation;
+}
+
+.board.appear .cell { animation: cellIn .5s var(--ease) both; animation-delay: var(--d); }
+@keyframes cellIn { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+
+.cell .v { color: var(--user); transition: color .2s; }
+.cell.given .v { color: var(--ink); font-weight: 700; }
+.cell.hinted .v { color: var(--hint); }
+.cell.err .v { color: var(--err); }
+.cell.err { background: var(--err-bg); }
+.cell.peer { background: var(--peer); }
+.cell.same { background: var(--same); }
+.cell.sel { background: var(--sel); }
+.cell.err.sel { background: #f9cfc9; }
+.cell.pop .v { animation: pop .32s var(--ease); }
+@keyframes pop { 0% { transform: scale(.4); opacity: .2; } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.cell.shake { animation: shake .4s ease; }
+@keyframes shake { 0%,100% { transform: none; } 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+.cell.nudge { animation: nudge .35s ease; }
+@keyframes nudge { 50% { transform: scale(.92); } }
+
+.cell.glow::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 214, 110, .85), rgba(255, 214, 110, 0) 70%);
+  animation: glow .9s ease-out both; animation-delay: var(--gd, 0ms);
+}
+@keyframes glow { 0% { opacity: 0; transform: scale(.6); } 35% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1); } }
+
+.board.won .cell { animation: winWave 1.2s var(--ease) both; animation-delay: var(--wd); }
+@keyframes winWave {
+  0% { transform: none; }
+  35% { transform: translateY(-6px) scale(1.06); background: #fff1c4; }
+  100% { transform: none; background: #fff8e2; }
+}
+.board.won { box-shadow: var(--shadow), 0 0 0 6px rgba(255, 214, 110, .7), 0 0 40px rgba(255, 196, 80, .5); transition: box-shadow 1s; }
+.board.won .cell .v { color: var(--ink); }
+
+.notes { position: absolute; inset: 6%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); pointer-events: none; }
+.notes span { display: grid; place-items: center; font-size: calc(var(--cell) * .24); font-weight: 600; color: var(--ink-soft); opacity: 0; transform: scale(.5); transition: opacity .2s, transform .2s var(--ease); }
+.big-notes .notes span { font-size: calc(var(--cell) * .3); font-weight: 700; }
+.notes span.on { opacity: 1; transform: none; }
+.notes span.hl { color: #b06c00; background: #ffe3a0; border-radius: 4px; }
+
+/* Инструменты и цифры */
+.controls { width: min(560px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tool {
+  border: 0; background: transparent; border-radius: 14px; padding: 6px 2px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: var(--ink-soft); font-size: 14px; font-weight: 600;
+  transition: background .2s, color .2s, transform .15s;
+}
+.tool:active { transform: scale(.94); }
+.tool svg { width: 30px; height: 30px; }
+.tool b { font-weight: 700; }
+.tool[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.tool:disabled { opacity: .35; }
+
+.pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+.key {
+  border: 0; border-radius: 14px; background: var(--card); box-shadow: var(--shadow);
+  min-height: 66px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 32px; font-weight: 600; color: var(--user); line-height: 1;
+  transition: transform .15s var(--ease), opacity .3s, background .2s;
+}
+.key small { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 3px; }
+.key:active { transform: scale(.92); background: var(--accent-soft); }
+.key.done { opacity: .3; }
+.key.done small { visibility: hidden; }
+.key.celebrate { animation: keyCeleb .9s var(--ease); }
+@keyframes keyCeleb { 0% { transform: none; } 30% { transform: translateY(-8px) scale(1.1); background: #fff1c4; } 100% { transform: none; } }
+.notes-mode .key { color: var(--ink-soft); font-size: 26px; }
+
+/* Широкий экран (компьютер, планшет горизонтально): цифры справа 3×3 */
+@media (min-aspect-ratio: 5/4) and (min-width: 760px) {
+  .play { flex-direction: row; align-items: stretch; justify-content: center; gap: 32px; padding: 0 32px 20px; width: 100%; max-width: 1280px; margin: 0 auto; }
+  .board-wrap { flex: 1 1 auto; }
+  .controls { width: 340px; flex: none; align-self: center; }
+  .pad { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .key { min-height: 88px; font-size: 40px; border-radius: 18px; }
+  .key small { font-size: 14px; }
+  .tools { grid-template-columns: repeat(2, 1fr); }
+  .tool { flex-direction: row; justify-content: center; gap: 8px; padding: 12px; font-size: 16px; background: var(--card); box-shadow: var(--shadow); }
+}
+
+/* ---------- Награды ---------- */
+.medal-shelf { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 4px 0 14px; }
+.shelf-item { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 10px 4px; text-align: center; animation: popIn .5s var(--ease) both; }
+.shelf-item .medal-svg { width: 100%; max-width: 64px; height: auto; display: block; margin: 0 auto; }
+.shelf-item .cnt { font-size: 22px; font-weight: 800; }
+.shelf-item .nm { font-size: 12px; color: var(--ink-soft); line-height: 1.2; }
+.total { text-align: center; font-size: 18px; color: var(--ink-soft); margin-bottom: 14px; }
+.trophy-list { display: grid; gap: 10px; }
+.trow { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 10px 14px; animation: popIn .5s var(--ease) both; }
+.trow .num { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 800; font-size: 22px; display: grid; place-items: center; flex: none; }
+.trow .info { flex: 1; }
+.trow .info b { font-size: 17px; }
+.trow .info div { font-size: 14px; color: var(--ink-soft); }
+.trow .medal-svg { width: 48px; height: 48px; flex: none; }
+
+/* ---------- Настройки ---------- */
+.settings-list { display: flex; flex-direction: column; gap: 10px; }
+.switch-row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 16px 18px; font-size: 18px; font-weight: 600; cursor: pointer; }
+.switch-row span { flex: 1; display: flex; flex-direction: column; }
+.switch-row small { font-weight: 500; font-size: 14px; color: var(--ink-soft); }
+.switch-row input { position: absolute; opacity: 0; pointer-events: none; }
+.switch-row i { width: 58px; height: 34px; border-radius: 20px; background: #d9d3c6; position: relative; transition: background .25s; flex: none; }
+.switch-row i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: transform .3s var(--ease); }
+.switch-row input:checked + i { background: #5bb381; }
+.switch-row input:checked + i::after { transform: translateX(24px); }
+.switch-row input:focus-visible + i { outline: 3px solid var(--gold); outline-offset: 2px; }
+.version { text-align: center; color: var(--muted); font-size: 14px; }
+
+/* ---------- Правила ---------- */
+.help { font-size: 18px; line-height: 1.5; }
+.help h3 { margin: 18px 0 6px; }
+.help li { margin: 4px 0; }
+.muted { color: var(--ink-soft); font-size: 16px; }
+.award-table { display: grid; gap: 8px; }
+.award-row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 8px 12px; box-shadow: var(--shadow); }
+.award-row .medal-svg { width: 44px; height: 44px; flex: none; }
+.award-row div { flex: 1; }
+.award-row small { display: block; color: var(--ink-soft); font-size: 15px; }
+
+/* ---------- Модальное окно ---------- */
+.modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(43, 58, 85, .35); backdrop-filter: blur(3px); animation: fade .3s ease both; }
+@keyframes fade { from { opacity: 0; } }
+.modal-card { width: min(420px, 100%); background: var(--card); border-radius: 26px; padding: 26px 22px 20px; box-shadow: 0 24px 60px rgba(0,0,0,.2); text-align: center; animation: cardIn .5s var(--ease) both; max-height: 92dvh; overflow-y: auto; }
+@keyframes cardIn { from { opacity: 0; transform: translateY(30px) scale(.94); } to { opacity: 1; transform: none; } }
+.modal-card h3 { font-size: 26px; margin: 0 0 8px; }
+.modal-card p { font-size: 18px; color: var(--ink-soft); margin: 0 0 18px; line-height: 1.4; }
+.modal-actions { display: grid; gap: 10px; }
+.modal-actions .btn { font-size: 19px; min-height: 58px; }
+
+.win .medal-big { width: 170px; height: 170px; margin: 10px auto 4px; position: relative; }
+.win .medal-big .medal-svg { width: 100%; height: 100%; transform-origin: 50% 0; animation: medalDrop 1.4s .15s var(--ease) both, medalSwing 3.5s 1.5s ease-in-out infinite; }
+.win .medal-big::before { content: ""; position: absolute; inset: 10% 5% 0; border-radius: 50%; background: radial-gradient(circle, rgba(255, 220, 120, .65), transparent 65%); animation: halo 2.6s ease-in-out infinite; }
+@keyframes medalDrop { 0% { transform: translateY(-120px) rotate(-14deg); opacity: 0; } 50% { transform: translateY(8px) rotate(6deg); opacity: 1; } 72% { transform: translateY(-4px) rotate(-3deg); } 100% { transform: none; } }
+@keyframes medalSwing { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(3deg); } }
+@keyframes halo { 0%, 100% { transform: scale(.9); opacity: .6; } 50% { transform: scale(1.08); opacity: 1; } }
+.win .tier-name { font-size: 24px; font-weight: 800; margin: 0 0 4px; animation: fadeUp .6s .9s var(--ease) both; }
+.win p { animation: fadeUp .6s 1s var(--ease) both; }
+.win .new-best { display: inline-block; background: #fff1c4; color: #a66500; font-weight: 700; padding: 4px 12px; border-radius: 20px; font-size: 15px; margin-bottom: 10px; animation: fadeUp .6s 1.1s var(--ease) both; }
+.win-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 18px; animation: fadeUp .6s 1.15s var(--ease) both; }
+.win-stats div { background: var(--bg); border-radius: 14px; padding: 10px 4px; }
+.win-stats b { display: block; font-size: 22px; }
+.win-stats span { font-size: 13px; color: var(--ink-soft); }
+.win .modal-actions { animation: fadeUp .6s 1.25s var(--ease) both; }
+.stars { position: absolute; inset: 0; pointer-events: none; }
+.stars i { position: absolute; width: 10px; height: 10px; background: var(--gold); clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%); animation: twinkle 2.2s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.3); } 50% { opacity: 1; transform: scale(1); } }
+
+/* ---------- Загрузка ---------- */
+.loader { position: fixed; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 12px; background: rgba(246, 241, 231, .8); backdrop-filter: blur(2px); font-size: 20px; color: var(--ink-soft); animation: fade .3s ease both; }
+.loader p { margin: 0; }
+.loader-dots { display: flex; gap: 10px; }
+.loader-dots i { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); animation: dot 1s ease-in-out infinite; }
+.loader-dots i:nth-child(2) { animation-delay: .15s; background: var(--gold); }
+.loader-dots i:nth-child(3) { animation-delay: .3s; background: #5bb381; }
+@keyframes dot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+.confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; }
+
+.toast { position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 16px; font-size: 17px; z-index: 70; box-shadow: var(--shadow); animation: toastIn .4s var(--ease) both; max-width: 90vw; text-align: center; }
+.toast.out { animation: toastOut .4s ease both; }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -14px); } }
+@keyframes toastOut { to { opacity: 0; transform: translate(-50%, -14px); } }
+
+@media (max-width: 380px) {
+  .key { min-height: 58px; font-size: 27px; border-radius: 12px; }
+  .pad { gap: 4px; }
+  .tool { font-size: 12.5px; }
+  .level .nm { font-size: 13.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+.logo-svg ellipse:not([id]) { opacity: .45; }
+@media (max-width: 400px) { .topbar h2 { font-size: 21px; } }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ГЛАВНОЕ МЕНЮ -->
+  <section class="screen" id="home" data-screen>
+    <div class="home-inner">
+      <button class="logo" id="logo" aria-label="Судоку">
+        <!--LOGO--><svg class="logo-svg" viewBox="20 40 472 400" aria-hidden="true"><defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b8ad1"/><stop offset="1" stop-color="#2b4c84"/></linearGradient>
+  <linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f1f4fa"/></linearGradient>
+  <linearGradient id="sideL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9d6ea"/><stop offset="1" stop-color="#a9bad6"/></linearGradient>
+  <linearGradient id="sideR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fb2d2"/><stop offset="1" stop-color="#8197bd"/></linearGradient>
+  <linearGradient id="nineG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc24a"/><stop offset="1" stop-color="#f08a1c"/></linearGradient>
+</defs>
+  <ellipse cx="256" cy="431" rx="160.72" ry="24.86" fill="#0b1f3a" opacity=".28"/><polygon points="60,282 256,395 256,425 60,312" fill="url(#sideL)"/><polygon points="256,395 452,282 452,312 256,425" fill="url(#sideR)"/><polygon points="256,169 452,282 256,395 60,282" fill="url(#top)"/><polygon points="256,244.3 321.3,282 256,319.7 190.7,282" fill="#ffe9b0"/><polygon points="256,269.4 277.8,282 256,294.6 234.2,282" fill="#ffd36b"/><polygon points="234.2,181.6 256,194.1 234.2,206.7 212.4,194.1" fill="#dfe8f6"/><polygon points="147.1,282 168.9,294.6 147.1,307.1 125.3,294.6" fill="#dfe8f6"/><polygon points="408.4,256.9 430.2,269.4 408.4,282 386.7,269.4" fill="#dfe8f6"/><polygon points="321.3,332.2 343.1,344.8 321.3,357.3 299.6,344.8" fill="#dfe8f6"/><polygon points="190.7,332.2 212.4,344.8 190.7,357.3 168.9,344.8" fill="#dfe8f6"/><polygon points="190.7,231.8 212.4,244.3 190.7,256.9 168.9,244.3" fill="#dfe8f6"/><polygon points="343.1,269.4 364.9,282 343.1,294.6 321.3,282" fill="#dfe8f6"/><line x1="256" y1="169" x2="60" y2="282" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><line x1="256" y1="169" x2="452" y2="282" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><line x1="277.8" y1="181.6" x2="81.8" y2="294.6" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="234.2" y1="181.6" x2="430.2" y2="294.6" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="299.6" y1="194.1" x2="103.6" y2="307.1" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="212.4" y1="194.1" x2="408.4" y2="307.1" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="321.3" y1="206.7" x2="125.3" y2="319.7" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><line x1="190.7" y1="206.7" x2="386.7" y2="319.7" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><line x1="343.1" y1="219.2" x2="147.1" y2="332.2" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="168.9" y1="219.2" x2="364.9" y2="332.2" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="364.9" y1="231.8" x2="168.9" y2="344.8" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="147.1" y1="231.8" x2="343.1" y2="344.8" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="386.7" y1="244.3" x2="190.7" y2="357.3" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><line x1="125.3" y1="244.3" x2="321.3" y2="357.3" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><line x1="408.4" y1="256.9" x2="212.4" y2="369.9" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="103.6" y1="256.9" x2="299.6" y2="369.9" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="430.2" y1="269.4" x2="234.2" y2="382.4" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="81.8" y1="269.4" x2="277.8" y2="382.4" stroke="#9fb3cf" stroke-width="1.6" stroke-linecap="round"/><line x1="452" y1="282" x2="256" y2="395" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><line x1="60" y1="282" x2="256" y2="395" stroke="#3c5a86" stroke-width="4.2" stroke-linecap="round"/><polyline points="60,282 256,169 452,282" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2.5" stroke-linejoin="round"/>
+  <ellipse id="logoRipple" cx="256" cy="290" rx="40" ry="20" fill="none" stroke="#f08a1c" stroke-width="4"/>
+  <ellipse id="logoShadow" cx="256" cy="292" rx="34" ry="12" fill="#7a4a10" opacity=".28"/>
+  <g transform="translate(256,290)"><g id="logoNine"><g transform="scale(1)">
+    <circle cx="0" cy="-118" r="36" fill="none" stroke="#b85c06" stroke-width="30" transform="translate(3,5)" opacity=".55"/>
+    <path d="M36 -118 V -50 Q36 -4 -2 -4 Q-20 -4 -32 -16" fill="none" stroke="#b85c06" stroke-width="30" stroke-linecap="round" transform="translate(3,5)" opacity=".55"/>
+    <circle cx="0" cy="-118" r="36" fill="none" stroke="url(#nineG)" stroke-width="30"/>
+    <path d="M36 -118 V -50 Q36 -4 -2 -4 Q-20 -4 -32 -16" fill="none" stroke="url(#nineG)" stroke-width="30" stroke-linecap="round"/>
+    <path d="M-22 -140 A28 28 0 0 1 10 -150" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="7" stroke-linecap="round"/>
+  </g></g></g>
+</svg><!--/LOGO-->
+      </button>
+      <h1 class="title">Судоку</h1>
+      <p class="subtitle">Спокойная игра для ума</p>
+      <div class="menu">
+        <button class="btn btn-primary btn-big" id="btnContinue" hidden>
+          <span>Продолжить</span><small id="continueInfo"></small>
+        </button>
+        <button class="btn btn-big" id="btnNew"><span>Новая игра</span></button>
+        <button class="btn btn-big" id="btnTrophies"><span>Мои награды</span><small id="trophyInfo"></small></button>
+        <div class="menu-row">
+          <button class="btn" id="btnHelp">Как играть</button>
+          <button class="btn" id="btnSettings">Настройки</button>
+        </div>
+        <button class="btn btn-soft" id="btnInstall" hidden>Установить на рабочий стол</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ВЫБОР УРОВНЯ -->
+  <section class="screen" id="levels" data-screen hidden>
+    <header class="topbar">
+      <button class="icon-btn" data-back aria-label="Назад"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2>Выберите уровень</h2>
+      <span class="spacer"></span>
+    </header>
+    <div class="level-grid" id="levelGrid"></div>
+    <p class="hint-text">Чем выше уровень, тем меньше цифр открыто в начале.</p>
+  </section>
+
+  <!-- ИГРА -->
+  <section class="screen" id="game" data-screen hidden>
+    <header class="topbar game-top">
+      <button class="icon-btn" id="btnMenu" aria-label="В меню"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="game-title">
+        <div class="lvl" id="lvlName"></div>
+        <div class="meta">
+          <span class="corr" id="corrBox" title="Исправления"><span class="corr-medal" id="corrMedal"></span><span id="corrCount">0</span></span>
+          <span class="timer" id="timer">0:00</span>
+        </div>
+      </div>
+      <span class="spacer"></span>
+    </header>
+
+    <div class="play">
+      <div class="board-wrap" id="boardWrap">
+        <div class="board" id="board" role="grid" aria-label="Поле судоку"></div>
+      </div>
+      <div class="controls">
+        <div class="tools">
+          <button class="tool" id="tUndo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span>Отменить</span></button>
+          <button class="tool" id="tErase"><svg viewBox="0 0 24 24"><path d="M20 20H9L4 15a2 2 0 010-3l8-8a2 2 0 013 0l5 5a2 2 0 010 3l-8 8"/><path d="M8 11l6 6"/></svg><span>Стереть</span></button>
+          <button class="tool" id="tNotes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg><span>Заметки <b id="notesState">выкл</b></span></button>
+          <button class="tool" id="tHint"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0012 2z"/></svg><span>Подсказка</span></button>
+        </div>
+        <div class="pad" id="pad"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- НАГРАДЫ -->
+  <section class="screen" id="trophies" data-screen hidden>
+    <header class="topbar">
+      <button class="icon-btn" data-back aria-label="Назад"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2>Мои награды</h2>
+      <span class="spacer"></span>
+    </header>
+    <div class="scroll">
+      <div class="medal-shelf" id="medalShelf"></div>
+      <div class="total" id="totalSolved"></div>
+      <div class="trophy-list" id="trophyList"></div>
+    </div>
+  </section>
+
+  <!-- НАСТРОЙКИ -->
+  <section class="screen" id="settings" data-screen hidden>
+    <header class="topbar">
+      <button class="icon-btn" data-back aria-label="Назад"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2>Настройки</h2>
+      <span class="spacer"></span>
+    </header>
+    <div class="scroll settings-list">
+      <label class="switch-row"><span>Звуки</span><input type="checkbox" data-setting="sound"><i></i></label>
+      <label class="switch-row"><span>Сразу показывать ошибки<small>Неверная цифра подсветится красным</small></span><input type="checkbox" data-setting="showErrors"><i></i></label>
+      <label class="switch-row"><span>Подсвечивать одинаковые цифры</span><input type="checkbox" data-setting="highlightSame"><i></i></label>
+      <label class="switch-row"><span>Показывать время</span><input type="checkbox" data-setting="showTimer"><i></i></label>
+      <label class="switch-row"><span>Крупные цифры в заметках</span><input type="checkbox" data-setting="bigNotes"><i></i></label>
+      <button class="btn btn-danger" id="btnReset">Сбросить все награды</button>
+      <p class="version">Версия 1.0 · работает без интернета</p>
+    </div>
+  </section>
+
+  <!-- ПРАВИЛА -->
+  <section class="screen" id="help" data-screen hidden>
+    <header class="topbar">
+      <button class="icon-btn" data-back aria-label="Назад"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2>Как играть</h2>
+      <span class="spacer"></span>
+    </header>
+    <div class="scroll help">
+      <p>Заполните поле так, чтобы в <b>каждой строке</b>, в <b>каждом столбце</b> и в <b>каждом квадрате 3×3</b> были все цифры от 1 до 9 — без повторов.</p>
+      <ol>
+        <li>Нажмите на пустую клетку.</li>
+        <li>Нажмите цифру внизу.</li>
+        <li>«Заметки» — можно записать карандашом несколько догадок в клетку.</li>
+        <li>«Отменить» возвращает последний ход, «Стереть» очищает клетку.</li>
+      </ol>
+      <h3>Награды</h3>
+      <p>Награда зависит от того, сколько раз вы <b>исправляли уже поставленные цифры</b> (замена, стирание, отмена хода). Подсказка тоже считается исправлением. Заметки не считаются.</p>
+      <div class="award-table" id="awardTable"></div>
+      <p class="muted">На компьютере можно играть клавиатурой: стрелки, цифры 1–9, Delete — стереть, N — заметки, Ctrl+Z — отменить.</p>
+    </div>
+  </section>
+</div>
+
+<!-- Модальное окно -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" id="modalCard" role="dialog" aria-modal="true"></div>
+</div>
+
+<!-- Загрузка -->
+<div class="loader" id="loader" hidden><div class="loader-dots"><i></i><i></i><i></i></div><p>Раскладываю цифры…</p></div>
+
+<script>
+/* Генератор и решатель судоку (битовые маски, уникальное решение). */
+(function (global) {
+  'use strict';
+
+  const ROW = new Uint8Array(81), COL = new Uint8Array(81), BOX = new Uint8Array(81);
+  for (let i = 0; i < 81; i++) {
+    ROW[i] = (i / 9) | 0;
+    COL[i] = i % 9;
+    BOX[i] = ((ROW[i] / 3) | 0) * 3 + ((COL[i] / 3) | 0);
+  }
+
+  const UNITS = []; // 27 групп: 9 строк, 9 столбцов, 9 квадратов
+  for (let k = 0; k < 9; k++) {
+    UNITS.push([...Array(9)].map((_, j) => k * 9 + j));
+    UNITS.push([...Array(9)].map((_, j) => j * 9 + k));
+    const r0 = ((k / 3) | 0) * 3, c0 = (k % 3) * 3;
+    UNITS.push([...Array(9)].map((_, j) => (r0 + ((j / 3) | 0)) * 9 + c0 + (j % 3)));
+  }
+
+  const PEERS = [];
+  for (let i = 0; i < 81; i++) {
+    const s = new Set();
+    for (let j = 0; j < 81; j++) {
+      if (j !== i && (ROW[j] === ROW[i] || COL[j] === COL[i] || BOX[j] === BOX[i])) s.add(j);
+    }
+    PEERS.push([...s]);
+  }
+
+  const popcount = (m) => { let c = 0; while (m) { m &= m - 1; c++; } return c; };
+  const FULL = 0x3fe; // биты 1..9
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /** Решает/считает решения. limit — сколько решений достаточно найти. */
+  function search(grid, limit, randomize) {
+    const g = Array.from(grid);
+    const rows = new Uint16Array(9), cols = new Uint16Array(9), boxes = new Uint16Array(9);
+    for (let i = 0; i < 81; i++) {
+      const d = g[i];
+      if (!d) continue;
+      const b = 1 << d;
+      if ((rows[ROW[i]] | cols[COL[i]] | boxes[BOX[i]]) & b) return { count: 0, solution: null };
+      rows[ROW[i]] |= b; cols[COL[i]] |= b; boxes[BOX[i]] |= b;
+    }
+    let count = 0, solution = null;
+
+    function rec() {
+      let best = -1, bestMask = 0, bestCnt = 10;
+      for (let i = 0; i < 81; i++) {
+        if (g[i]) continue;
+        const m = FULL & ~(rows[ROW[i]] | cols[COL[i]] | boxes[BOX[i]]);
+        const c = popcount(m);
+        if (c < bestCnt) { best = i; bestMask = m; bestCnt = c; if (c <= 1) break; }
+      }
+      if (best < 0) {
+        count++;
+        if (!solution) solution = g.slice();
+        return count >= limit;
+      }
+      if (bestCnt === 0) return false;
+      const digits = [];
+      for (let d = 1; d <= 9; d++) if (bestMask & (1 << d)) digits.push(d);
+      if (randomize) shuffle(digits);
+      const r = ROW[best], c = COL[best], x = BOX[best];
+      for (const d of digits) {
+        const b = 1 << d;
+        g[best] = d; rows[r] |= b; cols[c] |= b; boxes[x] |= b;
+        if (rec()) return true;
+        g[best] = 0; rows[r] &= ~b; cols[c] &= ~b; boxes[x] &= ~b;
+      }
+      return false;
+    }
+    rec();
+    return { count, solution };
+  }
+
+  const countSolutions = (grid, limit = 2) => search(grid, limit, false).count;
+  const solve = (grid) => search(grid, 1, false).solution;
+  const fullGrid = () => search(new Array(81).fill(0), 1, true).solution;
+
+  /** Генерирует головоломку с заданным числом открытых цифр и единственным решением. */
+  function generate(givens, attempts = 12) {
+    givens = Math.max(22, Math.min(80, givens));
+    let best = null;
+    for (let a = 0; a < attempts; a++) {
+      const sol = fullGrid();
+      const puz = sol.slice();
+      let filled = 81;
+
+      // Проход 1: симметричные пары (красивее выглядит)
+      for (const i of shuffle([...Array(41).keys()])) {
+        if (filled <= givens) break;
+        const j = 80 - i;
+        if (!puz[i]) continue;
+        const pair = j !== i && filled - 2 >= givens;
+        const vi = puz[i], vj = puz[j];
+        puz[i] = 0; if (pair) puz[j] = 0;
+        if (countSolutions(puz) === 1) filled -= pair ? 2 : 1;
+        else { puz[i] = vi; puz[j] = vj; }
+      }
+      // Проход 2: одиночные клетки, если ещё не дошли до цели
+      if (filled > givens) {
+        for (const i of shuffle([...Array(81).keys()])) {
+          if (filled <= givens) break;
+          if (!puz[i]) continue;
+          const v = puz[i];
+          puz[i] = 0;
+          if (countSolutions(puz) === 1) filled--;
+          else puz[i] = v;
+        }
+      }
+      if (!best || filled < best.filled) best = { puzzle: puz, solution: sol, filled };
+      if (filled === givens) break;
+    }
+    return { puzzle: best.puzzle, solution: best.solution, givens: best.filled };
+  }
+
+  global.Sudoku = { ROW, COL, BOX, UNITS, PEERS, generate, solve, countSolutions };
+})(typeof self !== 'undefined' ? self : globalThis);
+
+</script>
+<script>
+/* Эффекты: мягкие звуки, конфетти, медали. */
+(function (global) {
+  'use strict';
+
+  const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Звук (WebAudio, тихие мягкие тона) ---------- */
+  let ctx = null;
+  function ac() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function tone(freq, start, dur, { type = 'sine', gain = 0.06 } = {}) {
+    const a = ac(); if (!a) return;
+    const t0 = a.currentTime + start;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  const SOUNDS = {
+    tap: () => tone(520, 0, 0.07, { gain: 0.025 }),
+    place: () => { tone(660, 0, 0.12, { gain: 0.05 }); tone(990, 0.01, 0.1, { gain: 0.015 }); },
+    note: () => tone(1180, 0, 0.06, { gain: 0.02 }),
+    erase: () => tone(392, 0, 0.1, { gain: 0.035 }),
+    oops: () => { tone(330, 0, 0.16, { type: 'triangle', gain: 0.04 }); tone(294, 0.09, 0.18, { type: 'triangle', gain: 0.035 }); },
+    unit: () => [523.25, 659.25, 783.99].forEach((f, k) => tone(f, k * 0.07, 0.25, { gain: 0.04 })),
+    digit: () => [783.99, 1046.5].forEach((f, k) => tone(f, k * 0.08, 0.3, { gain: 0.035 })),
+    win: () => {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => tone(f, k * 0.14, 0.5, { gain: 0.05 }));
+      [523.25, 659.25, 783.99].forEach((f) => tone(f, 0.7, 1.4, { gain: 0.03 }));
+    },
+    award: () => [1046.5, 1318.5, 1568].forEach((f, k) => tone(f, k * 0.1, 0.45, { gain: 0.03 })),
+  };
+  let soundOn = true;
+  function play(name) { if (soundOn && SOUNDS[name]) try { SOUNDS[name](); } catch (e) { /* ignore */ } }
+
+  /* ---------- Конфетти (медленное, пастельное) ---------- */
+  function confetti({ duration = 5200, count = 140 } = {}) {
+    if (reducedMotion()) return;
+    const c = document.createElement('canvas');
+    c.className = 'confetti';
+    document.body.appendChild(c);
+    const g = c.getContext('2d');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const resize = () => { c.width = innerWidth * dpr; c.height = innerHeight * dpr; };
+    resize();
+    const colors = ['#ffcf5c', '#ff9f7a', '#8fd3a8', '#86b7f0', '#c9a7f5', '#ffd6e5', '#ffe9a8'];
+    const P = [...Array(count)].map(() => ({
+      x: Math.random() * c.width,
+      y: -Math.random() * c.height * 0.8 - 20 * dpr,
+      w: (6 + Math.random() * 7) * dpr,
+      h: (9 + Math.random() * 9) * dpr,
+      vy: (0.9 + Math.random() * 1.4) * dpr,
+      sway: Math.random() * Math.PI * 2,
+      swaySpeed: 0.015 + Math.random() * 0.025,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.08,
+      color: colors[(Math.random() * colors.length) | 0],
+      round: Math.random() < 0.3,
+    }));
+    const t0 = performance.now();
+    function frame(t) {
+      const el = t - t0;
+      g.clearRect(0, 0, c.width, c.height);
+      const fade = el > duration - 1200 ? Math.max(0, (duration - el) / 1200) : 1;
+      g.globalAlpha = fade;
+      for (const p of P) {
+        p.y += p.vy; p.sway += p.swaySpeed; p.x += Math.sin(p.sway) * 0.8 * dpr; p.rot += p.vr;
+        g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.fillStyle = p.color;
+        if (p.round) { g.beginPath(); g.arc(0, 0, p.w / 2, 0, Math.PI * 2); g.fill(); }
+        else { g.scale(1, Math.cos(p.sway * 2)); g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); }
+        g.restore();
+      }
+      if (el < duration) requestAnimationFrame(frame); else c.remove();
+    }
+    requestAnimationFrame(frame);
+    addEventListener('resize', resize, { once: true });
+  }
+
+  /* ---------- Медали (SVG) ---------- */
+  let uid = 0;
+  const TIER_STYLE = {
+    crown: { a: '#fff1b8', b: '#f4b73a', c: '#c07a12', ribbon: ['#8a6be6', '#5d44c2'] },
+    gold: { a: '#fff0a8', b: '#f2be35', c: '#b9800e', ribbon: ['#e85d5d', '#3f73c9'] },
+    silver: { a: '#ffffff', b: '#c9d1dc', c: '#7f8a99', ribbon: ['#4f8fd6', '#2f5fa8'] },
+    bronze: { a: '#ffd9b5', b: '#d98a4a', c: '#8f4f1f', ribbon: ['#3aa776', '#24764f'] },
+    patience: { a: '#e3f6e6', b: '#8fd0a0', c: '#3f8a55', ribbon: ['#f0a1b8', '#d56b8c'] },
+  };
+
+  function star(cx, cy, r1, r2, n = 5) {
+    let d = '';
+    for (let k = 0; k < n * 2; k++) {
+      const r = k % 2 ? r2 : r1, a = -Math.PI / 2 + (k * Math.PI) / n;
+      d += (k ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1);
+    }
+    return d + 'Z';
+  }
+
+  function medalSVG(tier, { locked = false } = {}) {
+    const s = TIER_STYLE[tier] || TIER_STYLE.gold;
+    const id = 'm' + ++uid;
+    const gray = locked ? ' filter="url(#' + id + 'gr)"' : '';
+    const defs = `<defs>
+      <radialGradient id="${id}g" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="${s.a}"/><stop offset=".55" stop-color="${s.b}"/><stop offset="1" stop-color="${s.c}"/></radialGradient>
+      <linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.b}"/><stop offset="1" stop-color="${s.c}"/></linearGradient>
+      <filter id="${id}gr"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".35"/></feComponentTransfer></filter>
+    </defs>`;
+
+    if (tier === 'crown') {
+      return `<svg viewBox="0 0 120 120" class="medal-svg" aria-hidden="true">${defs}<g${gray}>
+        <circle cx="60" cy="64" r="50" fill="${s.ribbon[0]}" opacity=".16"/>
+        <circle cx="60" cy="64" r="40" fill="${s.ribbon[0]}" opacity=".14"/>
+        <path d="M22 86 L16 40 L40 60 L60 26 L80 60 L104 40 L98 86 Z" fill="url(#${id}g)" stroke="${s.c}" stroke-width="3" stroke-linejoin="round"/>
+        <rect x="22" y="84" width="76" height="14" rx="5" fill="url(#${id}r)" stroke="${s.c}" stroke-width="3"/>
+        <circle cx="16" cy="38" r="6" fill="#fff6d0" stroke="${s.c}" stroke-width="2.5"/>
+        <circle cx="60" cy="24" r="7" fill="#fff6d0" stroke="${s.c}" stroke-width="2.5"/>
+        <circle cx="104" cy="38" r="6" fill="#fff6d0" stroke="${s.c}" stroke-width="2.5"/>
+        <circle cx="60" cy="70" r="8" fill="#e84a6f" stroke="#a52346" stroke-width="2"/>
+        <circle cx="38" cy="74" r="5.5" fill="#4aa3df" stroke="#1f6ea6" stroke-width="2"/>
+        <circle cx="82" cy="74" r="5.5" fill="#5cc28b" stroke="#2b8a59" stroke-width="2"/>
+        <path d="M30 50 Q36 46 40 52" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>
+        <path d="M57 66 a4 4 0 0 1 5 -2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </g></svg>`;
+    }
+
+    const inner = tier === 'patience'
+      ? `<path d="M60 92 C30 74 30 52 44 48 C52 46 58 52 60 58 C62 52 68 46 76 48 C90 52 90 74 60 92Z" fill="#fff" opacity=".9"/>
+         <path d="M60 86 C38 72 38 56 47 54 C53 53 58 58 60 64 C62 58 67 53 73 54 C82 56 82 72 60 86Z" fill="${s.ribbon[1]}"/>`
+      : `<path d="${star(60, 72, 22, 9.5)}" fill="#fff" fill-opacity=".92" stroke="${s.c}" stroke-width="2" stroke-linejoin="round"/>`;
+
+    return `<svg viewBox="0 0 120 120" class="medal-svg" aria-hidden="true">${defs}<g${gray}>
+      <path d="M38 4 L58 4 L66 42 L50 46 Z" fill="${s.ribbon[0]}"/>
+      <path d="M82 4 L62 4 L54 42 L70 46 Z" fill="${s.ribbon[1]}"/>
+      <path d="M38 4 L58 4 L60 12 L40 12Z" fill="#000" opacity=".12"/>
+      <circle cx="60" cy="72" r="38" fill="url(#${id}r)"/>
+      <circle cx="60" cy="72" r="31" fill="url(#${id}g)" stroke="${s.a}" stroke-width="2" stroke-opacity=".8"/>
+      ${inner}
+      <path d="M36 58 A28 28 0 0 1 56 44" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+    </g></svg>`;
+  }
+
+  global.FX = {
+    play, confetti, medalSVG, reducedMotion,
+    setSound(v) { soundOn = !!v; },
+    unlockAudio() { try { ac(); } catch (e) { /* ignore */ } },
+  };
+})(window);
+
+</script>
+<script>
+/* Судоку — логика приложения */
+(function () {
+  'use strict';
+  const { PEERS, UNITS, ROW, COL, BOX } = window.Sudoku;
+  const $ = (s, r = document) => r.querySelector(s);
+  const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+
+  /* ---------- Настройки игры ---------- */
+  const LEVELS = [
+    { n: 1, name: 'Первые шаги', givens: 52 },
+    { n: 2, name: 'Очень лёгкий', givens: 47 },
+    { n: 3, name: 'Лёгкий', givens: 43 },
+    { n: 4, name: 'Спокойный', givens: 39 },
+    { n: 5, name: 'Средний', givens: 35 },
+    { n: 6, name: 'Вдумчивый', givens: 32 },
+    { n: 7, name: 'Сложный', givens: 29 },
+    { n: 8, name: 'Очень сложный', givens: 26 },
+    { n: 9, name: 'Мастер', givens: 24 },
+  ];
+
+  const TIERS = [
+    { id: 'crown', name: 'Хрустальная корона', short: 'Корона', max: 0, range: 'без исправлений', text: 'Ни одного исправления — безупречно!' },
+    { id: 'gold', name: 'Золотая медаль', short: 'Золото', max: 2, range: '1–2 исправления', text: 'Почти идеально. Великолепно!' },
+    { id: 'silver', name: 'Серебряная медаль', short: 'Серебро', max: 5, range: '3–5 исправлений', text: 'Очень хорошая игра!' },
+    { id: 'bronze', name: 'Бронзовая медаль', short: 'Бронза', max: 10, range: '6–10 исправлений', text: 'Хорошо получилось!' },
+    { id: 'patience', name: 'Орден терпения', short: 'Терпение', max: Infinity, range: 'больше 10', text: 'Терпение и труд всё перетрут. Молодец!' },
+  ];
+  const tierIndex = (c) => TIERS.findIndex((t) => c <= t.max);
+
+  const K = { game: 'sudoku.v1.game', stats: 'sudoku.v1.stats', settings: 'sudoku.v1.settings' };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
+  };
+
+  const settings = Object.assign({ sound: true, showErrors: true, highlightSame: true, showTimer: true, bigNotes: false }, store.get(K.settings, {}));
+  const freshStats = () => ({ solved: 0, byLevel: {}, medals: { crown: 0, gold: 0, silver: 0, bronze: 0, patience: 0 } });
+  let stats = Object.assign(freshStats(), store.get(K.stats, {}));
+  FX.setSound(settings.sound);
+
+  let game = null;      // текущая партия
+  let sel = -1;         // выбранная клетка
+  let notesMode = false;
+  let timerId = null;
+  const cells = [];     // DOM клетки
+  const keys = [];      // DOM кнопки цифр
+
+  /* ---------- Экраны ---------- */
+  const history = [];
+  function show(id, { push = true } = {}) {
+    const cur = document.querySelector('[data-screen]:not([hidden])');
+    if (cur && cur.id === id) return;
+    if (cur && push) history.push(cur.id);
+    document.querySelectorAll('[data-screen]').forEach((s) => { s.hidden = s.id !== id; });
+    const s = $('#' + id);
+    s.style.animation = 'none'; void s.offsetWidth; s.style.animation = '';
+    if (id === 'home') renderHome();
+    if (id === 'levels') renderLevels();
+    if (id === 'trophies') renderTrophies();
+    if (id === 'settings') renderSettings();
+    if (id === 'help') renderHelp();
+    if (id === 'game') { startTimer(); requestAnimationFrame(sizeBoard); } else stopTimer();
+  }
+  function back() { show(history.pop() || 'home', { push: false }); }
+  document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => { FX.play('tap'); back(); }));
+
+  /* ---------- Главное меню ---------- */
+  function renderHome() {
+    const saved = game && !game.won ? game : null;
+    $('#btnContinue').hidden = !saved;
+    if (saved) {
+      const filled = saved.values.filter((v, i) => v && !saved.given[i]).length;
+      const need = 81 - saved.given.filter(Boolean).length;
+      $('#continueInfo').textContent = `Уровень ${saved.level} · заполнено ${Math.round((filled / need) * 100)}%`;
+    }
+    const total = Object.values(stats.medals).reduce((a, b) => a + b, 0);
+    $('#trophyInfo').textContent = total ? `Наград: ${total}` : '';
+  }
+
+  $('#logo').addEventListener('click', () => {
+    const l = $('#logo');
+    l.classList.add('replay'); void l.offsetWidth; l.classList.remove('replay');
+  });
+  $('#btnContinue').addEventListener('click', () => { FX.unlockAudio(); FX.play('tap'); openGame(false); });
+  $('#btnNew').addEventListener('click', () => { FX.unlockAudio(); FX.play('tap'); show('levels'); });
+  $('#btnTrophies').addEventListener('click', () => { FX.play('tap'); show('trophies'); });
+  $('#btnHelp').addEventListener('click', () => { FX.play('tap'); show('help'); });
+  $('#btnSettings').addEventListener('click', () => { FX.play('tap'); show('settings'); });
+
+  /* ---------- Уровни ---------- */
+  function renderLevels() {
+    const g = $('#levelGrid'); g.innerHTML = '';
+    LEVELS.forEach((L, k) => {
+      const b = el('button', 'level');
+      b.style.animationDelay = k * 45 + 'ms';
+      const rec = stats.byLevel[L.n];
+      const dots = [...Array(Math.min(5, Math.ceil(L.n / 2)))].map(() => '<i class="on"></i>').join('') +
+        [...Array(5 - Math.min(5, Math.ceil(L.n / 2)))].map(() => '<i></i>').join('');
+      b.innerHTML = `<span class="num">${L.n}</span><span class="nm">${L.name}</span><span class="gv">${L.givens} цифр открыто</span><span class="dots">${dots}</span>` +
+        (rec && rec.best != null ? `<span class="best">${FX.medalSVG(TIERS[rec.best].id)}</span>` : '');
+      b.setAttribute('aria-label', `Уровень ${L.n}, ${L.name}`);
+      b.addEventListener('click', () => { FX.play('tap'); chooseLevel(L.n); });
+      g.appendChild(b);
+    });
+  }
+
+  function chooseLevel(n) {
+    if (game && !game.won && game.moves > 0) {
+      modal({
+        title: 'Начать новую игру?',
+        text: 'Текущая игра не закончена. Если начать новую, она пропадёт.',
+        actions: [
+          { label: 'Да, новая игра', primary: true, fn: () => newGame(n) },
+          { label: 'Вернуться к текущей', fn: () => openGame(false) },
+          { label: 'Отмена' },
+        ],
+      });
+    } else newGame(n);
+  }
+
+  /* ---------- Создание игры ---------- */
+  function newGame(level) {
+    const L = LEVELS[level - 1];
+    $('#loader').hidden = false;
+    setTimeout(() => {
+      const { puzzle, solution } = Sudoku.generate(L.givens);
+      game = {
+        level, puzzle, solution,
+        values: puzzle.slice(),
+        given: puzzle.map((v) => v > 0),
+        hinted: new Array(81).fill(false),
+        notes: new Array(81).fill(0),
+        corrections: 0, hints: 0, moves: 0, elapsed: 0,
+        undo: [], won: false,
+      };
+      save();
+      $('#loader').hidden = true;
+      openGame(true);
+    }, 260);
+  }
+
+  function openGame(fresh) {
+    if (!game) return;
+    sel = -1; notesMode = false;
+    history.length = 0; history.push('home');
+    buildBoard();
+    show('game', { push: false });
+    renderAll();
+    animateAppear();
+    if (fresh) setTimeout(() => toast('Нажмите на клетку, потом на цифру'), 900);
+  }
+
+  /* ---------- Поле ---------- */
+  function buildBoard() {
+    const board = $('#board');
+    board.innerHTML = ''; cells.length = 0;
+    board.classList.remove('won');
+    const boxes = [];
+    for (let b = 0; b < 9; b++) { const bx = el('div', 'box b' + b); boxes.push(bx); board.appendChild(bx); }
+    const order = [];
+    for (let i = 0; i < 81; i++) {
+      const c = el('button', 'cell');
+      c.type = 'button';
+      c.dataset.i = i;
+      c.setAttribute('role', 'gridcell');
+      c.innerHTML = `<span class="v"></span><div class="notes">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<span>${d}</span>`).join('')}</div>`;
+      cells[i] = c;
+      order.push(i);
+    }
+    // Клетки кладём в квадраты по порядку
+    for (let b = 0; b < 9; b++) for (const i of UNITS[b * 3 + 2]) boxes[b].appendChild(cells[i]);
+    board.onpointerdown = (e) => {
+      const c = e.target.closest('.cell'); if (!c) return;
+      FX.unlockAudio();
+      select(+c.dataset.i);
+    };
+    board.classList.toggle('big-notes', !!settings.bigNotes);
+    buildPad();
+  }
+
+  function buildPad() {
+    const pad = $('#pad'); pad.innerHTML = ''; keys.length = 0;
+    for (let d = 1; d <= 9; d++) {
+      const k = el('button', 'key', `${d}<small></small>`);
+      k.type = 'button';
+      k.setAttribute('aria-label', 'Цифра ' + d);
+      k.addEventListener('click', () => { FX.unlockAudio(); input(d); });
+      keys[d] = k; pad.appendChild(k);
+    }
+  }
+
+  function animateAppear() {
+    const board = $('#board');
+    board.classList.remove('appear'); void board.offsetWidth;
+    for (let i = 0; i < 81; i++) {
+      const dist = Math.hypot(ROW[i] - 4, COL[i] - 4);
+      cells[i].style.setProperty('--d', Math.round(dist * 70 + Math.random() * 40) + 'ms');
+    }
+    board.classList.add('appear');
+    clearTimeout(animateAppear.t);
+    animateAppear.t = setTimeout(() => board.classList.remove('appear'), 1300);
+  }
+
+  function sizeBoard() {
+    const wrap = $('#boardWrap'); if (!wrap || $('#game').hidden) return;
+    const r = wrap.getBoundingClientRect();
+    const size = Math.max(200, Math.min(r.width, r.height) - 12);
+    const cell = Math.floor((size - 12) / 9);
+    $('#board').style.setProperty('--cell', cell + 'px');
+  }
+  addEventListener('resize', sizeBoard);
+  if (window.ResizeObserver) new ResizeObserver(sizeBoard).observe($('#boardWrap'));
+
+  const isLocked = (i) => game.given[i] || game.hinted[i];
+  const isWrong = (i) => game.values[i] && game.values[i] !== game.solution[i];
+
+  function renderCell(i) {
+    const c = cells[i], v = game.values[i];
+    c.querySelector('.v').textContent = v || '';
+    c.classList.toggle('given', game.given[i]);
+    c.classList.toggle('hinted', game.hinted[i]);
+    c.classList.toggle('err', !!(settings.showErrors && !isLocked(i) && isWrong(i)));
+    const ns = c.querySelectorAll('.notes span');
+    for (let d = 1; d <= 9; d++) ns[d - 1].classList.toggle('on', !v && !!(game.notes[i] & (1 << d)));
+    const label = `Строка ${ROW[i] + 1}, столбец ${COL[i] + 1}: ${v ? 'цифра ' + v : 'пусто'}`;
+    c.setAttribute('aria-label', label);
+  }
+
+  function renderHighlights() {
+    const sv = sel >= 0 ? game.values[sel] : 0;
+    for (let i = 0; i < 81; i++) {
+      const c = cells[i];
+      const peer = sel >= 0 && i !== sel && (ROW[i] === ROW[sel] || COL[i] === COL[sel] || BOX[i] === BOX[sel]);
+      const same = settings.highlightSame && sv && game.values[i] === sv && i !== sel;
+      c.classList.toggle('sel', i === sel);
+      c.classList.toggle('peer', !!peer && !same);
+      c.classList.toggle('same', !!same);
+      const ns = c.querySelectorAll('.notes span');
+      for (let d = 1; d <= 9; d++) ns[d - 1].classList.toggle('hl', !!(settings.highlightSame && sv === d));
+    }
+  }
+
+  function renderPad() {
+    const cnt = new Array(10).fill(0);
+    for (let i = 0; i < 81; i++) if (game.values[i] && game.values[i] === game.solution[i]) cnt[game.values[i]]++;
+    for (let d = 1; d <= 9; d++) {
+      const left = 9 - cnt[d];
+      keys[d].classList.toggle('done', left === 0);
+      keys[d].querySelector('small').textContent = left;
+    }
+    $('#pad').classList.toggle('notes-mode', notesMode);
+    $('#tNotes').setAttribute('aria-pressed', notesMode);
+    $('#notesState').textContent = notesMode ? 'вкл' : 'выкл';
+    $('#tUndo').disabled = !game.undo.length;
+    return cnt;
+  }
+
+  function renderMeta() {
+    const L = LEVELS[game.level - 1];
+    $('#lvlName').textContent = `Уровень ${L.n} · ${L.name}`;
+    $('#corrCount').textContent = game.corrections;
+    const t = TIERS[tierIndex(game.corrections)];
+    const m = $('#corrMedal');
+    if (m.dataset.tier !== t.id) { m.innerHTML = FX.medalSVG(t.id); m.dataset.tier = t.id; }
+    $('#corrBox').title = `Исправлений: ${game.corrections}. Сейчас идёте на: ${t.name}`;
+    $('#timer').classList.toggle('off', !settings.showTimer);
+    $('#timer').textContent = fmtTime(game.elapsed);
+  }
+
+  function renderAll() {
+    for (let i = 0; i < 81; i++) renderCell(i);
+    renderHighlights(); renderPad(); renderMeta();
+  }
+
+  function select(i) {
+    if (!game || game.won) return;
+    sel = i;
+    FX.play('tap');
+    renderHighlights();
+  }
+
+  /* ---------- Ходы ---------- */
+  const snap = (i) => ({ i, v: game.values[i], n: game.notes[i] });
+  function pushUndo(kind, list) {
+    game.undo.push({ kind, cells: list });
+    if (game.undo.length > 300) game.undo.shift();
+  }
+  function flash(i, cls) { const c = cells[i]; c.classList.remove(cls); void c.offsetWidth; c.classList.add(cls); setTimeout(() => c.classList.remove(cls), 500); }
+  function bumpMedal() { const m = $('#corrMedal'); m.classList.remove('bump'); void m.offsetWidth; m.classList.add('bump'); }
+
+  function addCorrection(n = 1) {
+    const before = tierIndex(game.corrections);
+    game.corrections += n;
+    const after = tierIndex(game.corrections);
+    bumpMedal();
+    if (after !== before) toast(`Сейчас награда: ${TIERS[after].name}`);
+  }
+
+  function input(d) {
+    if (!game || game.won) return;
+    if (sel < 0) { toast('Сначала выберите клетку'); return; }
+    const i = sel;
+    if (isLocked(i)) { flash(i, 'nudge'); FX.play('tap'); return; }
+
+    if (notesMode) {
+      if (game.values[i]) { flash(i, 'nudge'); return; }
+      pushUndo('note', [snap(i)]);
+      game.notes[i] ^= 1 << d;
+      FX.play('note');
+      renderCell(i); renderPad(); save();
+      return;
+    }
+
+    if (game.values[i] === d) return;
+    const changed = [snap(i)];
+    const bit = 1 << d;
+    for (const p of PEERS[i]) if (game.notes[p] & bit) changed.push(snap(p));
+    if (game.values[i]) addCorrection();
+    pushUndo('place', changed);
+    game.values[i] = d; game.notes[i] = 0; game.moves++;
+    for (const p of PEERS[i]) game.notes[p] &= ~bit;
+    changed.forEach((c) => renderCell(c.i));
+    flash(i, 'pop');
+
+    const wrong = isWrong(i);
+    if (wrong && settings.showErrors) { FX.play('oops'); setTimeout(() => flash(i, 'shake'), 120); }
+    else FX.play('place');
+
+    renderHighlights();
+    const before = keys[d].classList.contains('done');
+    const cnt = renderPad();
+    renderMeta();
+    if (!wrong) {
+      const done = celebrateUnits(i);
+      if (!before && cnt[d] === 9) { keys[d].classList.add('celebrate'); setTimeout(() => keys[d].classList.remove('celebrate'), 900); if (!done) FX.play('digit'); }
+    }
+    save();
+    checkWin();
+  }
+
+  function celebrateUnits(i) {
+    let any = false;
+    UNITS.forEach((u) => {
+      if (!u.includes(i)) return;
+      if (!u.every((j) => game.values[j] === game.solution[j])) return;
+      any = true;
+      const order = u.slice().sort((a, b) => Math.hypot(ROW[a] - ROW[i], COL[a] - COL[i]) - Math.hypot(ROW[b] - ROW[i], COL[b] - COL[i]));
+      order.forEach((j, k) => {
+        const c = cells[j];
+        c.style.setProperty('--gd', k * 45 + 'ms');
+        c.classList.remove('glow'); void c.offsetWidth; c.classList.add('glow');
+        setTimeout(() => c.classList.remove('glow'), 1000 + k * 45);
+      });
+    });
+    if (any) FX.play('unit');
+    return any;
+  }
+
+  function erase() {
+    if (!game || game.won || sel < 0) return;
+    const i = sel;
+    if (isLocked(i)) { flash(i, 'nudge'); return; }
+    if (game.values[i]) {
+      pushUndo('erase', [snap(i)]);
+      game.values[i] = 0;
+      addCorrection();
+    } else if (game.notes[i]) {
+      pushUndo('note', [snap(i)]);
+      game.notes[i] = 0;
+    } else return;
+    FX.play('erase');
+    renderCell(i); renderHighlights(); renderPad(); renderMeta(); save();
+  }
+
+  function undo() {
+    if (!game || game.won || !game.undo.length) return;
+    const u = game.undo.pop();
+    if (u.kind === 'place') addCorrection();
+    for (const c of u.cells) { game.values[c.i] = c.v; game.notes[c.i] = c.n; renderCell(c.i); }
+    sel = u.cells[0].i;
+    flash(sel, 'pop');
+    FX.play('erase');
+    renderHighlights(); renderPad(); renderMeta(); save();
+  }
+
+  function hint() {
+    if (!game || game.won) return;
+    let i = sel >= 0 && !isLocked(sel) && game.values[sel] !== game.solution[sel] ? sel : -1;
+    if (i < 0) {
+      // ошибки сначала, потом пустые клетки с наименьшим числом вариантов
+      const wrong = [...Array(81).keys()].filter((j) => !isLocked(j) && isWrong(j));
+      const empty = [...Array(81).keys()].filter((j) => !game.values[j]);
+      const pool = wrong.length ? wrong : empty;
+      if (!pool.length) return;
+      i = pool[(Math.random() * pool.length) | 0];
+    }
+    modal({
+      title: 'Подсказка',
+      text: 'Открыть верную цифру? Подсказка считается как одно исправление.',
+      actions: [
+        { label: 'Да, подскажи', primary: true, fn: () => applyHint(i) },
+        { label: 'Нет, сама справлюсь' },
+      ],
+    });
+  }
+  function applyHint(i) {
+    const d = game.solution[i];
+    const bit = 1 << d;
+    for (const p of PEERS[i]) game.notes[p] &= ~bit;
+    game.values[i] = d; game.notes[i] = 0; game.hinted[i] = true; game.hints++; game.moves++;
+    // ходы для этой клетки больше нельзя отменить
+    game.undo = game.undo.filter((u) => !u.cells.some((c) => c.i === i));
+    addCorrection();
+    sel = i;
+    for (const p of PEERS[i]) renderCell(p);
+    renderCell(i); flash(i, 'pop'); FX.play('place');
+    renderHighlights(); renderPad(); renderMeta();
+    celebrateUnits(i);
+    save(); checkWin();
+  }
+
+  /* ---------- Победа ---------- */
+  function checkWin() {
+    if (game.values.some((v) => !v)) return;
+    if (game.values.some((v, i) => v !== game.solution[i])) {
+      if (!settings.showErrors) {
+        modal({
+          title: 'Почти готово!',
+          text: 'Поле заполнено, но где-то закралась ошибка. Показать неверные клетки?',
+          actions: [
+            { label: 'Показать', primary: true, fn: () => { [...Array(81).keys()].filter(isWrong).forEach((j) => { cells[j].classList.add('err'); flash(j, 'shake'); }); } },
+            { label: 'Поищу сама' },
+          ],
+        });
+      } else toast('Поле заполнено, но есть ошибки — они подсвечены красным');
+      return;
+    }
+    win();
+  }
+
+  function win() {
+    game.won = true;
+    stopTimer();
+    sel = -1; renderHighlights();
+    const t = tierIndex(game.corrections);
+    const L = game.level;
+    const rec = stats.byLevel[L] || { solved: 0, best: null, bestTime: null };
+    const newBest = rec.best == null || t < rec.best;
+    const newTime = rec.bestTime == null || game.elapsed < rec.bestTime;
+    rec.solved++;
+    if (newBest) rec.best = t;
+    if (newTime) rec.bestTime = game.elapsed;
+    stats.byLevel[L] = rec;
+    stats.solved++;
+    stats.medals[TIERS[t].id] = (stats.medals[TIERS[t].id] || 0) + 1;
+    store.set(K.stats, stats);
+    store.del(K.game);
+
+    const board = $('#board');
+    for (let i = 0; i < 81; i++) cells[i].style.setProperty('--wd', Math.round(Math.hypot(ROW[i] - 4, COL[i] - 4) * 90) + 'ms');
+    board.classList.add('won');
+    FX.play('win');
+    setTimeout(() => FX.confetti(), 700);
+    setTimeout(() => showWin(t, newBest && rec.solved > 1, rec.solved === 1), 1700);
+  }
+
+  function showWin(t, improved, first) {
+    const T = TIERS[t];
+    const stars = [...Array(10)].map(() => `<i style="left:${10 + Math.random() * 80}%;top:${5 + Math.random() * 45}%;animation-delay:${(Math.random() * 2).toFixed(2)}s"></i>`).join('');
+    const badge = improved ? '<div class="new-best">Новый рекорд на этом уровне!</div>' : first ? '<div class="new-best">Первая победа на этом уровне!</div>' : '';
+    const L = game.level;
+    const actions = [];
+    if (L < 9) actions.push({ label: `Следующий уровень (${L + 1})`, primary: true, fn: () => newGame(L + 1) });
+    actions.push({ label: 'Ещё раз этот уровень', primary: L === 9, fn: () => newGame(L) });
+    actions.push({ label: 'В меню', fn: () => show('home', { push: false }) });
+    modal({
+      cls: 'win',
+      html: `<div class="stars">${stars}</div>
+        <h3>Победа!</h3>
+        <div class="medal-big">${FX.medalSVG(T.id)}</div>
+        <div class="tier-name">${T.name}</div>
+        <p>${T.text}</p>
+        ${badge}
+        <div class="win-stats">
+          <div><b>${L}</b><span>уровень</span></div>
+          <div><b>${fmtTime(game.elapsed)}</b><span>время</span></div>
+          <div><b>${game.corrections}</b><span>${plural(game.corrections, 'исправление', 'исправления', 'исправлений')}</span></div>
+        </div>`,
+      actions,
+      dismissable: false,
+    });
+    setTimeout(() => FX.play('award'), 700);
+  }
+
+  /* ---------- Награды ---------- */
+  function renderTrophies() {
+    const shelf = $('#medalShelf'); shelf.innerHTML = '';
+    TIERS.forEach((T, k) => {
+      const n = stats.medals[T.id] || 0;
+      const it = el('div', 'shelf-item', `${FX.medalSVG(T.id, { locked: !n })}<div class="cnt">${n}</div><div class="nm">${T.short}</div>`);
+      it.style.animationDelay = k * 60 + 'ms';
+      shelf.appendChild(it);
+    });
+    $('#totalSolved').textContent = stats.solved ? `Всего решено головоломок: ${stats.solved}` : 'Пока нет наград — самое время начать!';
+    const list = $('#trophyList'); list.innerHTML = '';
+    LEVELS.forEach((L, k) => {
+      const rec = stats.byLevel[L.n];
+      const r = el('div', 'trow');
+      r.style.animationDelay = 200 + k * 50 + 'ms';
+      const info = rec ? `Решено: ${rec.solved} · лучшее время ${fmtTime(rec.bestTime)}` : 'Ещё не пройден';
+      r.innerHTML = `<div class="num">${L.n}</div><div class="info"><b>${L.name}</b><div>${info}</div></div>` +
+        FX.medalSVG(rec && rec.best != null ? TIERS[rec.best].id : 'gold', { locked: !(rec && rec.best != null) });
+      list.appendChild(r);
+    });
+  }
+
+  function renderHelp() {
+    const t = $('#awardTable'); t.innerHTML = '';
+    TIERS.forEach((T) => t.appendChild(el('div', 'award-row', `${FX.medalSVG(T.id)}<div><b>${T.name}</b><small>${T.range}</small></div>`)));
+  }
+
+  /* ---------- Настройки ---------- */
+  function renderSettings() {
+    document.querySelectorAll('[data-setting]').forEach((inp) => { inp.checked = !!settings[inp.dataset.setting]; });
+  }
+  document.querySelectorAll('[data-setting]').forEach((inp) => inp.addEventListener('change', () => {
+    settings[inp.dataset.setting] = inp.checked;
+    store.set(K.settings, settings);
+    FX.setSound(settings.sound);
+    FX.play('tap');
+  }));
+  $('#btnReset').addEventListener('click', () => modal({
+    title: 'Сбросить награды?',
+    text: 'Все медали и рекорды будут удалены. Это нельзя отменить.',
+    actions: [
+      { label: 'Да, сбросить', danger: true, fn: () => { stats = freshStats(); store.set(K.stats, stats); toast('Награды сброшены'); } },
+      { label: 'Отмена', primary: true },
+    ],
+  }));
+
+  const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
+
+  /* ---------- Таймер ---------- */
+  const fmtTime = (s) => {
+    s = s | 0;
+    const h = (s / 3600) | 0, m = ((s % 3600) / 60) | 0, x = s % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
+  };
+  function startTimer() {
+    stopTimer();
+    if (!game || game.won) return;
+    timerId = setInterval(() => {
+      if (document.hidden || !$('#modal').hidden) return;
+      game.elapsed++;
+      $('#timer').textContent = fmtTime(game.elapsed);
+      if (game.elapsed % 5 === 0) save();
+    }, 1000);
+  }
+  function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
+
+  /* ---------- Сохранение ---------- */
+  function save() { if (game && !game.won) store.set(K.game, game); }
+  addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+
+  /* ---------- Кнопки игры ---------- */
+  $('#btnMenu').addEventListener('click', () => { FX.play('tap'); save(); show('home', { push: false }); });
+  $('#tUndo').addEventListener('click', undo);
+  $('#tErase').addEventListener('click', erase);
+  $('#tNotes').addEventListener('click', () => { notesMode = !notesMode; FX.play('tap'); renderPad(); });
+  $('#tHint').addEventListener('click', () => { FX.play('tap'); hint(); });
+
+  document.addEventListener('keydown', (e) => {
+    if (!$('#modal').hidden) { if (e.key === 'Escape') closeModal(); return; }
+    if ($('#game').hidden || !game) { if (e.key === 'Escape' && $('#home').hidden) back(); return; }
+    const k = e.key;
+    if (/^[1-9]$/.test(k)) { input(+k); e.preventDefault(); return; }
+    if (k === 'Backspace' || k === 'Delete' || k === '0') { erase(); e.preventDefault(); return; }
+    if ((e.ctrlKey || e.metaKey) && (k === 'z' || k === 'я')) { undo(); e.preventDefault(); return; }
+    if (k === 'n' || k === 'N' || k === 'т' || k === 'Т') { notesMode = !notesMode; renderPad(); return; }
+    const mv = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[k];
+    if (mv) {
+      e.preventDefault();
+      if (sel < 0) { select(40); return; }
+      let r = ROW[sel], c = COL[sel];
+      if (mv === -9) r = (r + 8) % 9; if (mv === 9) r = (r + 1) % 9;
+      if (mv === -1) c = (c + 8) % 9; if (mv === 1) c = (c + 1) % 9;
+      select(r * 9 + c);
+    }
+    if (k === 'Escape') { sel = -1; renderHighlights(); }
+  });
+
+  /* ---------- Модальное окно и подсказки ---------- */
+  let modalDismissable = true;
+  function modal({ title, text, html, actions = [], cls = '', dismissable = true }) {
+    const m = $('#modal'), card = $('#modalCard');
+    card.className = 'modal-card ' + cls;
+    card.innerHTML = html || `<h3>${title}</h3><p>${text}</p>`;
+    const box = el('div', 'modal-actions');
+    actions.forEach((a) => {
+      const b = el('button', 'btn' + (a.primary ? ' btn-primary' : '') + (a.danger ? ' btn-danger' : ''), a.label);
+      if (a.danger) b.style.marginTop = '0';
+      b.addEventListener('click', () => { FX.play('tap'); closeModal(true); if (a.fn) a.fn(); });
+      box.appendChild(b);
+    });
+    card.appendChild(box);
+    modalDismissable = dismissable;
+    m.hidden = false;
+    const first = box.querySelector('.btn-primary') || box.querySelector('.btn');
+    if (first) setTimeout(() => first.focus({ preventScroll: true }), 50);
+  }
+  function closeModal(force) { if (!force && !modalDismissable) return; $('#modal').hidden = true; }
+  $('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+
+  let toastEl = null, toastT = null;
+  function toast(msg) {
+    if (toastEl) toastEl.remove();
+    clearTimeout(toastT);
+    toastEl = el('div', 'toast', msg);
+    document.body.appendChild(toastEl);
+    const me = toastEl;
+    toastT = setTimeout(() => { me.classList.add('out'); setTimeout(() => me.remove(), 400); }, 2600);
+  }
+
+  /* ---------- Установка PWA ---------- */
+  let deferredPrompt = null;
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; $('#btnInstall').hidden = false; });
+  addEventListener('appinstalled', () => { $('#btnInstall').hidden = true; deferredPrompt = null; });
+  $('#btnInstall').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice.catch(() => null);
+    deferredPrompt = null; $('#btnInstall').hidden = true;
+  });
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { /* ignore */ }));
+  }
+
+  /* ---------- Старт ---------- */
+  const saved = store.get(K.game, null);
+  if (saved && saved.values && saved.values.length === 81 && !saved.won) game = saved;
+  renderHome();
+})();
+
+</script>
+</body>
+</html>
