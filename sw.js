@@ -1,9 +1,10 @@
 /* Service worker: гра працює без інтернету. Після змін у файлах збільште VERSION. */
-const VERSION = 'sudoku-v2.1.0';
+const VERSION = 'sudoku-v3.0.0';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './icon.svg', './icon-192.png', './icon-512.png',
-  './maskable-512.png', './apple-touch-icon.png', './favicon-32.png',
+  './maskable-512.png', './apple-touch-icon.png', './favicon-32.png', './garden.svg',
+  './fl-bratky.webp', './fl-buzok.webp', './fl-chornobryvtsi.webp', './fl-edelveis.webp', './fl-gvozdyka.webp', './fl-hortenziya.webp', './fl-iris.webp', './fl-kameliya.webp', './fl-khryzantema.webp', './fl-konyushyna.webp', './fl-kulbaba.webp', './fl-kupalnytsia.webp', './fl-lavanda.webp', './fl-lotos.webp', './fl-magnoliya.webp', './fl-mak.webp', './fl-narcys.webp', './fl-nezabudka.webp', './fl-orkhideya.webp', './fl-paporot.webp', './fl-pivoniya.webp', './fl-romashka.webp', './fl-sonyashnyk.webp', './fl-strelitsiya.webp', './fl-troyanda.webp', './fl-tyulpan.webp', './fl-voloshka.webp', './fl-zhorzhyna.webp',
 ];
 
 // Кешуємо по одному файлу: якщо якогось немає, встановлення все одно проходить.
